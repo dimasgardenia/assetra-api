@@ -1,0 +1,15 @@
+node_modules/
+.env
+.DS_Store
+# database (berisi data pengguna)
+data/*.db
+data/*.db-journal
+data/*.db-shm
+data/*.db-wal
+# unggahan pengguna
+uploads/photos/*
+uploads/docs/*
+uploads/banners/*
+!uploads/photos/.gitkeep
+!uploads/docs/.gitkeep
+!uploads/banners/.gitkeep
