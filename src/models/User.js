@@ -58,6 +58,29 @@ export const UserModel = {
     db.prepare('UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?').run(passwordHash, id);
     return UserModel.findById(id);
   },
+  /* Ganti email → tandai belum terverifikasi (harus verifikasi ulang). */
+  updateEmail(id, email) {
+    db.prepare('UPDATE users SET email = ?, email_verified = 0 WHERE id = ?').run(email, id);
+    return UserModel.findById(id);
+  },
+
+  /* ── Perubahan akun tertunda (butuh OTP) ── */
+  setPendingChange(userId, { field, payload, otp, channel, expires }) {
+    db.prepare(`
+      INSERT INTO pending_changes (user_id, field, payload, otp, channel, expires, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(user_id) DO UPDATE SET field=excluded.field, payload=excluded.payload, otp=excluded.otp, channel=excluded.channel, expires=excluded.expires, created_at=excluded.created_at
+    `).run(userId, field, JSON.stringify(payload), otp, channel, expires, Date.now());
+  },
+  getPendingChange(userId) {
+    const row = db.prepare('SELECT field, payload, otp, channel, expires FROM pending_changes WHERE user_id = ?').get(userId);
+    if (!row) return null;
+    return { ...row, payload: JSON.parse(row.payload) };
+  },
+  clearPendingChange(userId) {
+    db.prepare('DELETE FROM pending_changes WHERE user_id = ?').run(userId);
+  },
+
   updateProfile(id, { name, picture, accountType, kycVerified }) {
     db.prepare(`
       UPDATE users SET

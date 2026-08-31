@@ -14,6 +14,11 @@ import watchlistRoutes from './routes/watchlist.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import aiRoutes from './routes/ai.routes.js';
 import bannersRoutes from './routes/banners.routes.js';
+import kprRoutes from './routes/kpr.routes.js';
+import agentsRoutes from './routes/agents.routes.js';
+import leadsRoutes from './routes/leads.routes.js';
+import contactRoutes from './routes/contact.routes.js';
+import accountRoutes from './routes/account.routes.js';
 
 initSchema();
 
@@ -40,6 +45,11 @@ app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/banners', bannersRoutes);
+app.use('/api/kpr', kprRoutes);
+app.use('/api/agents', agentsRoutes);
+app.use('/api/leads', leadsRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/account', accountRoutes);
 
 /* 404 + error handler last */
 app.use('/api/*', (req, res) => res.status(404).json({ error: 'Not found' }));

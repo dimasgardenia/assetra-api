@@ -24,4 +24,7 @@ export const env = {
      Terisi → kredensial Google diverifikasi server-side (produksi).
      Kosong → mode demo (profil dipercaya tanpa verifikasi). */
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+  /* Nomor WhatsApp kontak admin Assetra (format internasional 62...).
+     Hanya disajikan lewat endpoint yang wajib login → tidak bocor ke tamu. */
+  CONTACT_WA: process.env.CONTACT_WA || '6288906270430',
 };
