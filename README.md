@@ -101,3 +101,25 @@ DB_PATH=./data/assetra.db
 UPLOAD_DIR=./uploads
 CORS_ORIGIN=http://localhost:5173,http://localhost:5174
 ```
+
+## Satu layanan: API + frontend dari origin yang sama
+
+Set `WEB_DIST=./web-dist` agar API juga menyajikan hasil build `assetra-web` (SPA fallback ke
+`index.html`, `/api/*` dan `/files/*` tetap ke backend). `scripts/build-web.sh` meng-clone
+dan mem-build frontend ke `./web-dist` dengan `VITE_API_BASE` kosong (same-origin).
+
+```bash
+bash scripts/build-web.sh          # WEB_BRANCH=<branch> untuk memilih branch frontend
+WEB_DIST=./web-dist npm start      # buka http://localhost:3001
+```
+
+### Deploy gratis ke Render (bisa dari HP)
+
+`render.yaml` mendefinisikan satu web service free-tier yang menjalankan build di atas.
+1. Buka `https://dashboard.render.com`, login dengan GitHub.
+2. **New → Blueprint** → pilih repo `assetra-api` → pilih branch → **Apply**.
+3. Setelah build (±3 menit) buka `https://<nama-service>.onrender.com` di Chrome HP.
+
+Catatan free tier: service tidur setelah ±15 menit idle (request pertama lambat) dan disk
+tidak persisten, jadi database SQLite dan upload di-reset setiap deploy/restart
+(`startCommand` men-seed ulang akun demo).

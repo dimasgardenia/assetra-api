@@ -27,4 +27,8 @@ export const env = {
   /* Nomor WhatsApp kontak admin Assetra (format internasional 62...).
      Hanya disajikan lewat endpoint yang wajib login → tidak bocor ke tamu. */
   CONTACT_WA: process.env.CONTACT_WA || '6288906270430',
+  /* Opsional: folder hasil build frontend (assetra-web/dist). Jika diisi, API
+     juga menyajikan SPA-nya dari origin yang sama — cukup satu layanan untuk
+     hosting/testing dari HP (lihat scripts/build-web.sh & render.yaml). */
+  WEB_DIST: process.env.WEB_DIST || '',
 };

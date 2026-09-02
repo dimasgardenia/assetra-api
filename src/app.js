@@ -2,6 +2,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { env } from './config/env.js';
 import { initSchema } from './db/init.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -51,6 +52,24 @@ app.use('/api/leads', leadsRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/account', accountRoutes);
 
-/* 404 + error handler last */
+/* API 404 before the SPA fallback so unknown API paths never return index.html */
 app.use('/api/*', (req, res) => res.status(404).json({ error: 'Not found' }));
+
+/* Optional: serve the built frontend from the same origin (WEB_DIST=/path/to/dist).
+   Any non-API, non-file GET falls back to index.html for client-side routing. */
+if (env.WEB_DIST) {
+  const webDir = path.resolve(env.WEB_DIST);
+  const indexHtml = path.join(webDir, 'index.html');
+  if (fs.existsSync(indexHtml)) {
+    app.use(express.static(webDir, { index: 'index.html' }));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/') || req.path.startsWith('/files/')) return next();
+      res.sendFile(indexHtml);
+    });
+    console.log(`[assetra-api] serving frontend from ${webDir}`);
+  } else {
+    console.warn(`[assetra-api] WEB_DIST set but ${indexHtml} not found — frontend not served`);
+  }
+}
+
 app.use(errorHandler);

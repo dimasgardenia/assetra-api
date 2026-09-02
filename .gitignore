@@ -13,3 +13,6 @@ uploads/banners/*
 !uploads/photos/.gitkeep
 !uploads/docs/.gitkeep
 !uploads/banners/.gitkeep
+# frontend build served by the API (scripts/build-web.sh)
+web-dist/
+.web-src/

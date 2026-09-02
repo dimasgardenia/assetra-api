@@ -1,0 +1,35 @@
+# Render Blueprint — one free web service that runs the API and serves the
+# built frontend from the same origin. Deploy from a phone:
+#   Render dashboard → New → Blueprint → pick dimasgardenia/assetra-api →
+#   pick this branch → Apply. The URL is https://<service-name>.onrender.com
+#
+# Free tier notes: the instance sleeps after ~15 min idle (first request is
+# slow), and the disk is ephemeral, so the SQLite DB and uploads reset on every
+# deploy/restart. The start command re-seeds demo data each boot.
+services:
+  - type: web
+    name: assetra
+    runtime: node
+    plan: free
+    buildCommand: npm ci && bash scripts/build-web.sh
+    startCommand: node src/db/seed.js && node src/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: WEB_DIST
+        value: ./web-dist
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_PATH
+        value: ./data/assetra.db
+      - key: UPLOAD_DIR
+        value: ./uploads
+      # Same origin — CORS only matters when the frontend is hosted elsewhere.
+      - key: CORS_ORIGIN
+        value: http://localhost:5173
+      - key: APP_URL
+        fromService:
+          type: web
+          name: assetra
+          envVarKey: RENDER_EXTERNAL_URL
