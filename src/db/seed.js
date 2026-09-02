@@ -22,8 +22,8 @@ const existingAdmin = db.prepare('SELECT id FROM users WHERE email = ?').get(adm
 if (!existingAdmin) {
   const hash = bcrypt.hashSync('admin123', 10);
   db.prepare(`
-    INSERT INTO users (email, password_hash, name, role, kyc_verified, provider)
-    VALUES (?, ?, ?, 'admin', 1, 'admin')
+    INSERT INTO users (email, password_hash, name, role, kyc_verified, email_verified, provider)
+    VALUES (?, ?, ?, 'admin', 1, 1, 'admin')
   `).run(adminEmail, hash, 'Admin Console');
   console.log(`[seed] created admin user → ${adminEmail} / admin123`);
 } else {
@@ -36,8 +36,8 @@ const existingBidder = db.prepare('SELECT id FROM users WHERE email = ?').get(bi
 if (!existingBidder) {
   const hash = bcrypt.hashSync('bidder123', 10);
   db.prepare(`
-    INSERT INTO users (email, password_hash, name, role, kyc_verified, provider)
-    VALUES (?, ?, ?, 'bidder', 1, 'email')
+    INSERT INTO users (email, password_hash, name, role, kyc_verified, email_verified, provider)
+    VALUES (?, ?, ?, 'bidder', 1, 1, 'email')
   `).run(bidderEmail, hash, 'Demo Bidder');
   console.log(`[seed] created bidder user → ${bidderEmail} / bidder123`);
 }
