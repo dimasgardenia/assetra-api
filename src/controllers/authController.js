@@ -184,8 +184,8 @@ const PHONE_OTP_TTL_MS = 5 * 60 * 1000; // OTP WhatsApp berlaku 5 menit
    ║ TITIK INTEGRASI PENYEDIA WHATSAPP                                 ║
    ║ Saat penyedia (SendTalk/Verihubs/Twilio/Meta Cloud API) siap,     ║
    ║ implementasikan pengiriman di fungsi ini lalu return true.        ║
-   ║ Selama return false → sistem berjalan dalam MODE DEMO:            ║
-   ║ OTP dikembalikan ke UI agar alur tetap bisa diuji end-to-end.     ║
+   ║ Selama return false → endpoint send-otp menjawab 503 dan          ║
+   ║ verifikasi WhatsApp belum bisa diselesaikan (OTP tidak dibocorkan).║
    ╚══════════════════════════════════════════════════════════════════╝ */
 async function sendWhatsAppOtp(phone, otp) {
   // TODO(provider): contoh Meta Cloud API —
@@ -196,8 +196,8 @@ async function sendWhatsAppOtp(phone, otp) {
   //       type: 'template', template: { name: 'otp_assetra', language: { code: 'id' },
   //       components: [{ type: 'body', parameters: [{ type: 'text', text: otp }] }] } }),
   //   });
-  console.log(`[auth] (demo) WhatsApp OTP untuk ${phone}: ${otp}`);
-  return false; // false = belum ada penyedia → mode demo
+  console.error(`[auth] WhatsApp OTP NOT sent to ${phone}: no WhatsApp provider configured`);
+  return false; // false = belum ada penyedia
 }
 
 function makeAuthResponse(user) {
@@ -280,10 +280,14 @@ export const authController = {
         });
       }
     }
-    /* Mode demo (tanpa RESEND_API_KEY): tidak ada email yang dikirim; token
-       dikembalikan agar UI bisa menawarkan tombol "Verifikasi sekarang". */
-    console.log(`[auth] (demo, RESEND_API_KEY kosong) verification requested for ${email} — token: ${token}`);
-    return res.status(201).json({ pendingVerification: true, email, emailSent: false, demo: { verifyToken: token } });
+    /* Tanpa RESEND_API_KEY: akun tetap dibuat (bisa diverifikasi lewat
+       "Kirim ulang" setelah email dikonfigurasi), tetapi tidak ada email yang
+       keluar dan token TIDAK pernah dikembalikan ke klien. */
+    console.error(`[auth] verification email NOT sent to ${email}: RESEND_API_KEY is not configured`);
+    return res.status(201).json({
+      pendingVerification: true, email, emailSent: false,
+      sendError: 'Akun dibuat, tetapi email verifikasi belum bisa dikirim — layanan email server belum dikonfigurasi (RESEND_API_KEY)',
+    });
   },
 
   async login(req, res) {
@@ -350,13 +354,12 @@ export const authController = {
       }
       return res.json(generic);
     }
-    return res.json({ ...generic, demo: { verifyToken: token } });
+    return res.status(503).json({ error: 'Layanan email server belum dikonfigurasi (RESEND_API_KEY) — hubungi administrator' });
   },
 
   /** Step 1 — request a reset token. Responds generically whether or not the
-   *  email exists (prevents account enumeration). Production would email the
-   *  link; this demo has no SMTP, so a registered email also gets the token
-   *  back in the response (clearly marked) so the UI can continue the flow. */
+   *  email exists (prevents account enumeration). The link is only ever
+   *  delivered by email; without RESEND_API_KEY the endpoint answers 503. */
   async forgotPassword(req, res) {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ error: 'email required' });
@@ -384,9 +387,8 @@ export const authController = {
       return res.json(generic);
     }
 
-    /* Mode demo (tanpa RESEND_API_KEY): token dikembalikan agar UI bisa lanjut. */
-    console.log(`[auth] password reset requested for ${email} — token: ${token}`);
-    return res.json({ ...generic, demo: { resetToken: token, expiresInMinutes: 15 } });
+    console.error(`[auth] reset email NOT sent to ${email}: RESEND_API_KEY is not configured`);
+    return res.status(503).json({ error: 'Layanan email server belum dikonfigurasi (RESEND_API_KEY) — hubungi administrator' });
   },
 
   /** Step 2 — set a new password with a valid token. Returns a session (auto-login). */
@@ -404,24 +406,27 @@ export const authController = {
     return res.json(makeAuthResponse(updated));
   },
 
-  /** Google SSO. Dengan GOOGLE_CLIENT_ID terpasang, kredensial (JWT Google)
-   *  diverifikasi server-side terhadap kunci publik Google — profil diambil
-   *  dari payload terverifikasi, bukan dari klien. Tanpa env → mode demo. */
+  /** Google SSO (OAuth 2.0 / OpenID Connect). Kredensial (ID token JWT dari
+   *  Google Identity Services) WAJIB dan diverifikasi server-side terhadap
+   *  kunci publik Google; profil diambil dari payload terverifikasi, bukan dari
+   *  klien. Tanpa GOOGLE_CLIENT_ID endpoint ini dimatikan (503). */
   async googleSso(req, res) {
-    let { email, name, picture, sub, credential } = req.body || {};
-
-    if (googleClient) {
-      if (!credential) return res.status(401).json({ error: 'Google credential required' });
-      try {
-        const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: env.GOOGLE_CLIENT_ID });
-        const p = ticket.getPayload();
-        email = p.email; name = p.name; picture = p.picture; sub = p.sub;
-      } catch (e) {
-        console.error('[auth] Google credential verification failed:', e.message);
-        return res.status(401).json({ error: 'Invalid Google credential' });
-      }
+    const { credential } = req.body || {};
+    if (!googleClient) {
+      return res.status(503).json({ error: 'Google Sign-In belum dikonfigurasi di server (GOOGLE_CLIENT_ID)' });
     }
+    if (!credential) return res.status(401).json({ error: 'Google credential required' });
 
+    let email, name, picture;
+    try {
+      const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: env.GOOGLE_CLIENT_ID });
+      const p = ticket.getPayload();
+      if (!p?.email_verified) return res.status(401).json({ error: 'Email akun Google belum terverifikasi' });
+      email = p.email; name = p.name; picture = p.picture;
+    } catch (e) {
+      console.error('[auth] Google credential verification failed:', e.message);
+      return res.status(401).json({ error: 'Invalid Google credential' });
+    }
     if (!email) return res.status(400).json({ error: 'email required' });
 
     let user = UserModel.findByEmail(email);
@@ -434,7 +439,7 @@ export const authController = {
         role,
         picture,
         provider: 'google',
-        kycVerified: true,        // demo: trust verified Google email as KYC
+        kycVerified: true,        // email dijamin terverifikasi oleh Google
       });
       user = UserModel.markEmailVerified(user.id);  // email dijamin Google
       /* Pendaftaran pertama via SSO → email selamat datang. */
@@ -468,13 +473,11 @@ export const authController = {
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     UserModel.setPhoneOtp(user.id, otp, Date.now() + PHONE_OTP_TTL_MS);
     const delivered = await sendWhatsAppOtp(user.phone, otp);
-    return res.json({
-      ok: true,
-      phone: user.phone,
-      expiresInMinutes: 5,
-      /* Mode demo (penyedia WA belum terpasang): OTP dikembalikan agar alur bisa diuji. */
-      ...(delivered ? {} : { demo: { otp } }),
-    });
+    if (!delivered) {
+      UserModel.setPhoneOtp(user.id, null, null);
+      return res.status(503).json({ error: 'Layanan verifikasi WhatsApp belum aktif — coba lagi nanti' });
+    }
+    return res.json({ ok: true, phone: user.phone, expiresInMinutes: 5 });
   },
 
   /** Cocokkan OTP → tandai nomor terverifikasi. */

@@ -14,15 +14,15 @@ export const env = {
   UPLOAD_DIR: process.env.UPLOAD_DIR || './uploads',
   CORS_ORIGIN: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(s => s.trim()),
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
-  /* Email transaksional (Resend). Tanpa key → forgot-password jalan dalam mode demo. */
+  /* Email transaksional (Resend). Tanpa key → verifikasi email & reset sandi tidak bisa dikirim (503). */
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   /* Pengirim: setelah domain terverifikasi ganti mis. 'Assetra <no-reply@domainmu.com>'.
      Default onboarding@resend.dev hanya bisa mengirim ke email pemilik akun Resend. */
   RESEND_FROM: process.env.RESEND_FROM || 'Assetra <onboarding@resend.dev>',
   APP_URL: process.env.APP_URL || 'http://localhost:5173',
   /* Google SSO: samakan dengan VITE_GOOGLE_CLIENT_ID di frontend.
-     Terisi → kredensial Google diverifikasi server-side (produksi).
-     Kosong → mode demo (profil dipercaya tanpa verifikasi). */
+     Terisi → kredensial Google diverifikasi server-side.
+     Kosong → Google Sign-In dimatikan (503). */
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
   /* Nomor WhatsApp kontak admin Assetra (format internasional 62...).
      Hanya disajikan lewat endpoint yang wajib login → tidak bocor ke tamu. */
