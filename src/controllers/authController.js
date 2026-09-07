@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import { Resend } from 'resend';
 import { OAuth2Client } from 'google-auth-library';
 import { env } from '../config/env.js';
-import { UserModel } from '../models/User.js';
+import { UserModel, normalizeEmail } from '../models/User.js';
 import { hashPassword, verifyPassword } from '../utils/password.js';
 import { signToken } from '../utils/jwt.js';
 import { isEmailFormatValid, domainAcceptsEmail } from '../utils/emailCheck.js';
@@ -208,7 +208,8 @@ function makeAuthResponse(user) {
 
 export const authController = {
   async register(req, res) {
-    const { email, password, name, accountType, phone } = req.body || {};
+    const { password, name, accountType, phone } = req.body || {};
+    const email = normalizeEmail(req.body?.email);
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
 
     /* Validasi email sebelum apa pun: format + domain harus punya MX record.
@@ -220,16 +221,32 @@ export const authController = {
       return res.status(400).json({ error: 'Domain email tidak dikenal — periksa kembali penulisan email Anda' });
     }
 
+    /* Email adalah identitas utama akun → dicek lebih dulu, sebelum nomor
+       WhatsApp, agar pesan yang muncul tepat sasaran. Pesan dibedakan supaya
+       pengguna tahu harus masuk, reset sandi, atau menyelesaikan verifikasi. */
+    const existing = UserModel.findByEmail(email);
+    if (existing) {
+      const verified = !!existing.emailVerified;
+      const viaGoogle = existing.provider === 'google' && !existing.passwordHash;
+      return res.status(409).json({
+        error: viaGoogle
+          ? 'Email sudah terdaftar lewat Google — masuk dengan tombol "Lanjutkan dengan Google"'
+          : verified
+            ? 'Email sudah terdaftar — silakan masuk, atau gunakan "Lupa kata sandi"'
+            : 'Email sudah terdaftar tetapi belum diverifikasi — kirim ulang tautan verifikasi di bawah',
+        code: 'EMAIL_TAKEN',
+        emailVerified: verified,
+        provider: existing.provider,
+      });
+    }
+
     /* Nomor WhatsApp aktif wajib untuk pendaftaran manual. */
     const normPhone = normalizeIndoPhone(phone || '');
     if (!normPhone) {
       return res.status(400).json({ error: 'Nomor WhatsApp tidak valid — gunakan format 08xx / +62xx' });
     }
     const phoneOwner = UserModel.findByPhone(normPhone);
-    if (phoneOwner) return res.status(409).json({ error: 'Nomor WhatsApp sudah terdaftar' });
-
-    const existing = UserModel.findByEmail(email);
-    if (existing) return res.status(409).json({ error: 'Email already registered' });
+    if (phoneOwner) return res.status(409).json({ error: 'Nomor WhatsApp sudah terdaftar di akun lain', code: 'PHONE_TAKEN' });
 
     const hash = await hashPassword(password);
     const role = /admin/i.test(email) ? 'admin' : 'bidder';
@@ -252,14 +269,21 @@ export const authController = {
       try {
         await sendVerifyEmail(email, token);
         console.log(`[auth] verification email sent to ${email}`);
+        return res.status(201).json({ pendingVerification: true, email, emailSent: true });
       } catch (e) {
+        /* Akun tetap dibuat; UI harus tahu email GAGAL terkirim agar tidak
+           menampilkan "email terkirim" dan bisa menawarkan kirim ulang. */
         console.error(`[auth] verification email FAILED for ${email}:`, e.message);
+        return res.status(201).json({
+          pendingVerification: true, email, emailSent: false,
+          sendError: 'Akun dibuat, tetapi email verifikasi gagal dikirim — coba "Kirim ulang email verifikasi"',
+        });
       }
-      return res.status(201).json({ pendingVerification: true, email });
     }
-    /* Mode demo (tanpa RESEND_API_KEY): token dikembalikan agar UI bisa lanjut. */
-    console.log(`[auth] verification requested for ${email} — token: ${token}`);
-    return res.status(201).json({ pendingVerification: true, email, demo: { verifyToken: token } });
+    /* Mode demo (tanpa RESEND_API_KEY): tidak ada email yang dikirim; token
+       dikembalikan agar UI bisa menawarkan tombol "Verifikasi sekarang". */
+    console.log(`[auth] (demo, RESEND_API_KEY kosong) verification requested for ${email} — token: ${token}`);
+    return res.status(201).json({ pendingVerification: true, email, emailSent: false, demo: { verifyToken: token } });
   },
 
   async login(req, res) {
@@ -322,6 +346,7 @@ export const authController = {
         console.log(`[auth] verification email re-sent to ${email}`);
       } catch (e) {
         console.error(`[auth] verification email FAILED for ${email}:`, e.message);
+        return res.status(502).json({ error: 'Email verifikasi gagal dikirim — periksa konfigurasi email server (RESEND_API_KEY / RESEND_FROM)' });
       }
       return res.json(generic);
     }

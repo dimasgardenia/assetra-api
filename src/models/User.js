@@ -1,5 +1,11 @@
 import { db } from '../config/db.js';
 
+/** Email disimpan & dibandingkan dalam huruf kecil tanpa spasi tepi —
+    "Budi@Gmail.com" dan "budi@gmail.com" adalah akun yang sama. */
+export function normalizeEmail(email) {
+  return typeof email === 'string' ? email.trim().toLowerCase() : '';
+}
+
 const PUBLIC_COLS = 'id, email, name, role, account_type AS accountType, kyc_verified AS kycVerified, email_verified AS emailVerified, phone, phone_verified AS phoneVerified, picture, provider, created_at AS createdAt';
 
 export const UserModel = {
@@ -7,7 +13,8 @@ export const UserModel = {
     return db.prepare(`SELECT ${PUBLIC_COLS}, password_hash AS passwordHash FROM users WHERE id = ?`).get(id);
   },
   findByEmail(email) {
-    return db.prepare(`SELECT ${PUBLIC_COLS}, password_hash AS passwordHash FROM users WHERE email = ?`).get(email);
+    /* COLLATE NOCASE: baris lama yang tersimpan dengan huruf besar tetap ditemukan. */
+    return db.prepare(`SELECT ${PUBLIC_COLS}, password_hash AS passwordHash FROM users WHERE email = ? COLLATE NOCASE`).get(normalizeEmail(email));
   },
   toPublic(row) {
     if (!row) return null;
@@ -35,7 +42,7 @@ export const UserModel = {
     const r = db.prepare(`
       INSERT INTO users (email, password_hash, name, role, account_type, picture, provider, kyc_verified, phone)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(email, passwordHash, name, role, accountType, picture, provider, kycVerified ? 1 : 0, phone);
+    `).run(normalizeEmail(email), passwordHash, name, role, accountType, picture, provider, kycVerified ? 1 : 0, phone);
     return UserModel.findById(r.lastInsertRowid);
   },
   setResetToken(id, token, expiresAt) {
@@ -60,7 +67,7 @@ export const UserModel = {
   },
   /* Ganti email → tandai belum terverifikasi (harus verifikasi ulang). */
   updateEmail(id, email) {
-    db.prepare('UPDATE users SET email = ?, email_verified = 0 WHERE id = ?').run(email, id);
+    db.prepare('UPDATE users SET email = ?, email_verified = 0 WHERE id = ?').run(normalizeEmail(email), id);
     return UserModel.findById(id);
   },
 
