@@ -113,11 +113,14 @@ id assetra >/dev/null 2>&1 || useradd --system --home "$APP_DIR" --shell /usr/sb
 mkdir -p "$APP_DIR" "$DATA_DIR/uploads"
 
 log "3/7 Kode sumber (cabang: $BRANCH)"
-git config --global --add safe.directory '*' >/dev/null 2>&1 || true   # repo dimiliki user assetra, dijalankan root
-fetch() { # fetch DIR REPO
-  if [ -d "$1/.git" ]; then git -C "$1" fetch -q origin "$BRANCH" && git -C "$1" checkout -q -B "$BRANCH" "origin/$BRANCH"
-  else git clone -q --branch "$BRANCH" "$2" "$1"; fi
-  echo "$1 @ $(git -C "$1" rev-parse --short HEAD)"
+g() { git -c "safe.directory=*" "$@"; }   # repo dimiliki user assetra, dijalankan root
+fetch() { # fetch DIR REPO — gagal = skrip berhenti (jangan diam-diam build kode lama)
+  if [ -d "$1/.git" ]; then
+    g -C "$1" fetch -q origin "$BRANCH" && g -C "$1" checkout -q -B "$BRANCH" "origin/$BRANCH" || { echo "GAGAL menarik kode $1"; exit 1; }
+  else
+    g clone -q --branch "$BRANCH" "$2" "$1" || { echo "GAGAL clone $2"; exit 1; }
+  fi
+  echo "$1 @ $(g -C "$1" rev-parse --short HEAD)"
 }
 fetch "$APP_DIR/api" "$API_REPO"
 fetch "$APP_DIR/web" "$WEB_REPO"
