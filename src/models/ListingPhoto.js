@@ -20,6 +20,10 @@ export const ListingPhotoModel = {
     return db.prepare(`SELECT ${COLS} FROM listing_photos WHERE id = ?`).get(r.lastInsertRowid);
   },
 
+  findById(id) {
+    return db.prepare(`SELECT ${COLS} FROM listing_photos WHERE id = ?`).get(id);
+  },
+
   remove(id) {
     const row = db.prepare(`SELECT ${COLS} FROM listing_photos WHERE id = ?`).get(id);
     if (!row) return null;

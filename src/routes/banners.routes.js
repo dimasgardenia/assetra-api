@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
+import { imageFileFilter } from '../utils/uploads.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import path from 'path';
 import fs from 'fs';
 import { env } from '../config/env.js';
@@ -21,11 +23,12 @@ const upload = multer({
       cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`);
     },
   }),
+  fileFilter: imageFileFilter,
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
 router.get('/active', wrap(bannerController.active));
-router.post('/:id/click', wrap(bannerController.click));
+router.post('/:id/click', rateLimit({ name: 'banner-click', windowMs: 60 * 1000, max: 30 }), wrap(bannerController.click));
 
 router.get('/', authRequired, requireRole('admin'), wrap(bannerController.list));
 router.post('/', authRequired, requireRole('admin'), upload.single('image'), wrap(bannerController.create));

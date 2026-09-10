@@ -189,6 +189,7 @@ export const authController = {
     const { password, name, accountType, phone } = req.body || {};
     const email = normalizeEmail(req.body?.email);
     if (!email || !password) return res.status(400).json({ error: 'email and password required' });
+    if (String(password).length < 6) return res.status(400).json({ error: 'Kata sandi minimal 6 karakter' });
 
     /* Validasi email sebelum apa pun: format + domain harus punya MX record.
        Email fiktif tidak pernah membuat akun ataupun memicu Resend. */

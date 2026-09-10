@@ -22,7 +22,7 @@ export const ListingModel = {
   },
 
   /** Paginated search. Filters: type, region, verifLevel ('kemenkeu'|'bpn'), q (text), source ('portal'). */
-  search({ type, region, verifLevel, q, limit, offset, status, source, createdBy }) {
+  search({ type, region, verifLevel, q, limit, offset, status, source, createdBy, excludeDraft }) {
     const where = [];
     const params = {};
     if (type && type !== 'all')      { where.push('type = @type'); params.type = type; }
@@ -30,6 +30,7 @@ export const ListingModel = {
     if (status)                      { where.push('status = @status'); params.status = status; }
     if (source)                      { where.push('source = @source'); params.source = source; }
     if (createdBy)                   { where.push('created_by = @createdBy'); params.createdBy = createdBy; }
+    if (excludeDraft)                { where.push("status != 'draft'"); }
     if (verifLevel === 'kemenkeu')   { where.push(`verifications LIKE '%KEMENKEU%'`); }
     if (verifLevel === 'bpn')        { where.push(`verifications LIKE '%BPN%'`); }
     if (q) {

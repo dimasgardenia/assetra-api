@@ -17,6 +17,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
       - key: WEB_DIST
         value: ./web-dist
       - key: JWT_SECRET

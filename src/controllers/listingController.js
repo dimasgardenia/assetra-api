@@ -3,6 +3,36 @@ import { ListingModel } from '../models/Listing.js';
 import { ListingPhotoModel } from '../models/ListingPhoto.js';
 import { ListingDocumentModel } from '../models/ListingDocument.js';
 import { parsePage, buildMeta } from '../utils/pagination.js';
+import path from 'path';
+import fs from 'fs';
+import { env } from '../config/env.js';
+
+const VALID_TYPES = ['villa', 'property', 'land', 'commercial', 'apartment'];
+const VALID_STATUS = ['live', 'soon', 'closed', 'draft', 'review'];
+
+/** Validasi input listing. Mengembalikan pesan error atau null. */
+function validateListing(body, { partial = false } = {}) {
+  if (!partial || body.title !== undefined) {
+    if (typeof body.title !== 'string' || !body.title.trim()) return 'Judul listing wajib diisi';
+    if (body.title.length > 200) return 'Judul maksimal 200 karakter';
+  }
+  if (body.type !== undefined && !VALID_TYPES.includes(body.type)) return `Tipe harus salah satu: ${VALID_TYPES.join(', ')}`;
+  if (body.status !== undefined && !VALID_STATUS.includes(body.status)) return `Status harus salah satu: ${VALID_STATUS.join(', ')}`;
+  if (body.price !== undefined && body.price !== null && !(Number.isFinite(Number(body.price)) && Number(body.price) >= 0)) return 'Harga harus angka ≥ 0';
+  return null;
+}
+
+const canSeeDraft = (req, listing) => !!req.user && (req.user.role === 'admin' || listing.createdBy === req.user.id);
+
+/* Hapus berkas foto/dokumen dari disk (best-effort) saat listing dihapus. */
+function unlinkFiles(paths) {
+  for (const p of paths) {
+    try {
+      const full = path.resolve(env.UPLOAD_DIR, String(p).replace(/^\/files\//, ''));
+      if (fs.existsSync(full)) fs.unlinkSync(full);
+    } catch {}
+  }
+}
 
 function decorate(listing) {
   if (!listing) return null;
@@ -34,6 +64,8 @@ export const listingController = {
       status: req.query.status,
       source: req.query.source,
       createdBy,
+      /* Draft hanya terlihat oleh admin, atau pembuatnya lewat ?mine=1. */
+      excludeDraft: !(req.user?.role === 'admin' || createdBy),
       limit: perPage,
       offset,
     });
@@ -47,11 +79,14 @@ export const listingController = {
     const id = decodeURIComponent(req.params.id);
     const listing = ListingModel.findById(id);
     if (!listing) return res.status(404).json({ error: 'Listing not found' });
+    if (listing.status === 'draft' && !canSeeDraft(req, listing)) return res.status(404).json({ error: 'Listing not found' });
     res.json({ data: decorate(listing) });
   },
 
   async create(req, res) {
-    const input = { ...req.body, createdBy: req.user?.id };
+    const invalid = validateListing(req.body || {});
+    if (invalid) return res.status(400).json({ error: invalid });
+    const input = { ...req.body, title: req.body.title.trim(), createdBy: req.user?.id };
     /* Agen / pemilik: listing selalu atas nama akun yang login dan langsung tayang. */
     if (req.user?.role !== 'admin') {
       input.agentName = req.user.name || input.agentName || 'Agen';
@@ -67,14 +102,21 @@ export const listingController = {
     const id = decodeURIComponent(req.params.id);
     const exists = ListingModel.findById(id);
     if (!exists) return res.status(404).json({ error: 'Listing not found' });
+    const invalid = validateListing(req.body || {}, { partial: true });
+    if (invalid) return res.status(400).json({ error: invalid });
     const listing = ListingModel.update(id, req.body || {});
     res.json({ data: decorate(listing) });
   },
 
   async remove(req, res) {
     const id = decodeURIComponent(req.params.id);
+    const files = [
+      ...ListingPhotoModel.listByListing(id).map(p => p.path),
+      ...ListingDocumentModel.listByListing(id).map(d => d.path),
+    ];
     const ok = ListingModel.remove(id);
     if (!ok) return res.status(404).json({ error: 'Listing not found' });
+    unlinkFiles(files);
     res.status(204).end();
   },
 };

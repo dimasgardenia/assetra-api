@@ -31,7 +31,11 @@ export const uploadController = {
 
   /* DELETE /api/listings/:id/photos/:photoId */
   async removePhoto(req, res) {
+    const listingId = decodeURIComponent(req.params.id);
     const photoId = Number(req.params.photoId);
+    /* Foto harus milik listing di URL — kepemilikan listing sudah dicek middleware. */
+    const photo = ListingPhotoModel.findById(photoId);
+    if (!photo || photo.listingId !== listingId) return res.status(404).json({ error: 'Photo not found' });
     const removed = ListingPhotoModel.remove(photoId);
     if (!removed) return res.status(404).json({ error: 'Photo not found' });
     // Try to unlink from disk (best-effort)

@@ -20,7 +20,8 @@ setInterval(() => {
  */
 export function rateLimit({ windowMs, max, name }) {
   return (req, res, next) => {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    /* req.ip menghormati app.set('trust proxy') — header X-Forwarded-For hanya dipercaya di belakang proxy. */
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const key = `${name}:${ip}`;
     const now = Date.now();
     let b = buckets.get(key);

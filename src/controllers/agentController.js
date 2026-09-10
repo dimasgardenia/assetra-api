@@ -37,11 +37,15 @@ export const agentController = {
     if (!name || !String(name).trim()) return res.status(400).json({ error: 'Nama wajib diisi' });
     const normPhone = phone ? normalizeIndoPhone(phone) : null;
     if (phone && !normPhone) return res.status(400).json({ error: 'Nomor telepon tidak valid — gunakan 08xx / +62xx' });
+    const normEmail = email ? String(email).trim().toLowerCase() : null;
+    if (normEmail && AgentModel.getByEmail(normEmail)) {
+      return res.status(409).json({ error: 'Email ini sudah terdaftar sebagai agen — pendaftaran sebelumnya masih diproses' });
+    }
     const agent = AgentModel.create({
       name: String(name).trim(),
       area: area ? String(area).trim() : null,
       phone: normPhone,
-      email: email ? String(email).trim().toLowerCase() : null,
+      email: normEmail,
       photo: cleanPhoto(photo),
       deals: 0,
       rating: null,
@@ -113,6 +117,6 @@ export const agentController = {
   async remove(req, res) {
     const ok = AgentModel.remove(Number(req.params.id));
     if (!ok) return res.status(404).json({ error: 'Agen tidak ditemukan' });
-    res.json({ data: { ok: true } });
+    res.status(204).end();
   },
 };

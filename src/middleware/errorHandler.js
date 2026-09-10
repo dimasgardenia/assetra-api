@@ -3,10 +3,8 @@ export function errorHandler(err, req, res, next) {
   console.error('[err]', err);
   if (res.headersSent) return next(err);
   const status = err.status || 500;
-  res.status(status).json({
-    error: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV !== 'production' && err.stack ? { stack: err.stack } : {}),
-  });
+  /* Stack trace hanya ke log server, tidak pernah ke klien. */
+  res.status(status).json({ error: status >= 500 ? 'Internal server error' : (err.message || 'Request failed') });
 }
 
 /** Wrap an async route handler so thrown errors propagate to errorHandler. */

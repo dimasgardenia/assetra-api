@@ -1,7 +1,7 @@
 /* Pengaturan akun: ganti nama / email / telepon / sandi + upload foto.
    Semua perubahan (kecuali foto) butuh OTP:
      - nama, email, sandi  → OTP via EMAIL
-     - telepon             → OTP via WHATSAPP (mode demo bila provider belum ada)
+     - telepon             → langsung diterapkan (verifikasi WhatsApp tidak dipakai)
    Ganti email: OTP ke email LAMA; email baru wajib verifikasi ulang (link).
    Ganti sandi: wajib sandi lama + OTP email. */
 import crypto from 'crypto';
@@ -17,7 +17,7 @@ const OTP_TTL_MS = 10 * 60 * 1000;
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 const gen6 = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
 
-/* Kirim OTP via email (Resend). Tanpa key → mode demo (kode dikembalikan ke UI). */
+/* Kirim OTP via email (Resend). Tanpa key → false → endpoint menjawab 503. */
 async function sendOtpEmail(email, otp, purpose) {
   if (!resend) return false;
   const html = `<!doctype html><html><body style="margin:0;background:#EEF1F7;font-family:Arial,Helvetica,sans-serif">
@@ -40,11 +40,7 @@ async function sendOtpEmail(email, otp, purpose) {
   return true;
 }
 
-/* Kirim OTP via WhatsApp — MODE DEMO sampai provider aktif (kode ke UI). */
-async function sendOtpWhatsApp(phone, otp) {
-  console.log(`[account] (demo) WhatsApp OTP untuk ${phone}: ${otp}`);
-  return false; // false = mode demo
-}
+const EMAIL_NOT_CONFIGURED = { error: 'Layanan email server belum dikonfigurasi (RESEND_API_KEY) — hubungi administrator' };
 
 /* Kirim link verifikasi email baru (setelah ganti email). */
 async function sendVerifyLink(email, token) {
@@ -84,7 +80,8 @@ export const accountController = {
       if (!value || !String(value).trim()) return res.status(400).json({ error: 'Nama tidak boleh kosong' });
       UserModel.setPendingChange(user.id, { field, payload: { value: String(value).trim() }, otp, channel: 'email', expires });
       const sent = await sendOtpEmail(user.email, otp, 'mengubah nama profil');
-      return res.json({ data: { channel: 'email', to: user.email, ...(sent ? {} : { demo: { otp } }) } });
+      if (!sent) { UserModel.clearPendingChange(user.id); return res.status(503).json(EMAIL_NOT_CONFIGURED); }
+      return res.json({ data: { channel: 'email', to: user.email } });
     }
 
     if (field === 'email') {
@@ -95,7 +92,8 @@ export const accountController = {
       /* OTP dikirim ke email LAMA untuk konfirmasi identitas. */
       UserModel.setPendingChange(user.id, { field, payload: { value: email }, otp, channel: 'email', expires });
       const sent = await sendOtpEmail(user.email, otp, 'mengganti alamat email');
-      return res.json({ data: { channel: 'email', to: user.email, ...(sent ? {} : { demo: { otp } }) } });
+      if (!sent) { UserModel.clearPendingChange(user.id); return res.status(503).json(EMAIL_NOT_CONFIGURED); }
+      return res.json({ data: { channel: 'email', to: user.email } });
     }
 
     if (field === 'phone') {
@@ -103,10 +101,9 @@ export const accountController = {
       if (!phone) return res.status(400).json({ error: 'Nomor tidak valid — gunakan 08xx / +62xx' });
       const owner = UserModel.findByPhone(phone);
       if (owner && owner.id !== user.id) return res.status(409).json({ error: 'Nomor sudah dipakai akun lain' });
-      /* OTP dikirim via WhatsApp ke nomor BARU. */
-      UserModel.setPendingChange(user.id, { field, payload: { value: phone }, otp, channel: 'whatsapp', expires });
-      const sent = await sendOtpWhatsApp(phone, otp);
-      return res.json({ data: { channel: 'whatsapp', to: phone, ...(sent ? {} : { demo: { otp } }) } });
+      /* Tidak ada verifikasi WhatsApp → nomor langsung diganti. */
+      const updated = UserModel.setPhone(user.id, phone);
+      return res.json({ data: { applied: true, user: UserModel.toPublic(updated) } });
     }
 
     if (field === 'password') {
@@ -117,7 +114,8 @@ export const accountController = {
       const passwordHash = await hashPassword(String(value));
       UserModel.setPendingChange(user.id, { field, payload: { passwordHash }, otp, channel: 'email', expires });
       const sent = await sendOtpEmail(user.email, otp, 'mengganti kata sandi');
-      return res.json({ data: { channel: 'email', to: user.email, ...(sent ? {} : { demo: { otp } }) } });
+      if (!sent) { UserModel.clearPendingChange(user.id); return res.status(503).json(EMAIL_NOT_CONFIGURED); }
+      return res.json({ data: { channel: 'email', to: user.email } });
     }
 
     return res.status(400).json({ error: 'Field tidak dikenal' });
@@ -144,7 +142,7 @@ export const accountController = {
       const vtoken = crypto.randomBytes(32).toString('hex');
       UserModel.setVerifyToken(user.id, vtoken, Date.now() + VERIFY_TTL_MS);
       const sent = await sendVerifyLink(user.email, vtoken);
-      extra = { emailChanged: true, needsReverify: true, ...(sent ? {} : { demo: { verifyToken: vtoken } }) };
+      extra = { emailChanged: true, needsReverify: true, verifyEmailSent: !!sent };
     }
     UserModel.clearPendingChange(req.user.id);
     res.json({ data: UserModel.toPublic(user), ...extra });

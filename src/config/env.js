@@ -8,6 +8,9 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 export const env = {
   PORT: Number(process.env.PORT || 3001),
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  /* true bila di belakang reverse proxy (Render, Nginx) → IP klien diambil dari X-Forwarded-For. */
+  TRUST_PROXY: ['1', 'true', 'yes'].includes(String(process.env.TRUST_PROXY || '').toLowerCase()),
   JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-change-me',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   DB_PATH: process.env.DB_PATH || './data/assetra.db',

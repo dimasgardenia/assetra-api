@@ -16,6 +16,12 @@ export const KycModel = {
   findById(id) {
     return db.prepare(`SELECT ${COLS} FROM kyc_submissions k LEFT JOIN users u ON u.id = k.user_id WHERE k.id = ?`).get(id);
   },
+  findPendingByUser(userId) {
+    return db.prepare(`SELECT ${COLS} FROM kyc_submissions k LEFT JOIN users u ON u.id = k.user_id WHERE k.user_id = ? AND k.status = 'pending' LIMIT 1`).get(userId);
+  },
+  findLatestByUser(userId) {
+    return db.prepare(`SELECT ${COLS} FROM kyc_submissions k LEFT JOIN users u ON u.id = k.user_id WHERE k.user_id = ? ORDER BY k.submitted_at DESC LIMIT 1`).get(userId);
+  },
   create({ userId, notes = null }) {
     const r = db.prepare(`INSERT INTO kyc_submissions (user_id, notes) VALUES (?, ?)`).run(userId, notes);
     return KycModel.findById(r.lastInsertRowid);

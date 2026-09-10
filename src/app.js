@@ -20,10 +20,15 @@ import agentsRoutes from './routes/agents.routes.js';
 import leadsRoutes from './routes/leads.routes.js';
 import contactRoutes from './routes/contact.routes.js';
 import accountRoutes from './routes/account.routes.js';
+import kycRoutes from './routes/kyc.routes.js';
 
 initSchema();
 
 export const app = express();
+
+/* Di belakang reverse proxy, req.ip diambil dari X-Forwarded-For (hanya bila TRUST_PROXY). */
+app.set('trust proxy', env.TRUST_PROXY ? 1 : false);
+app.disable('x-powered-by');
 
 app.use(cors({
   origin: env.CORS_ORIGIN,
@@ -33,7 +38,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use(authOptional);
 
 /* Static file serving — uploaded photos/docs accessible at /files/photos/... and /files/docs/... */
-app.use('/files', express.static(path.resolve(env.UPLOAD_DIR)));
+app.use('/files', (req, res, next) => { res.setHeader('X-Content-Type-Options', 'nosniff'); next(); }, express.static(path.resolve(env.UPLOAD_DIR)));
 
 /* Health check */
 app.get('/api/health', (req, res) => res.json({ ok: true, version: '0.1.0' }));
@@ -51,6 +56,7 @@ app.use('/api/agents', agentsRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/account', accountRoutes);
+app.use('/api/kyc', kycRoutes);
 
 /* API 404 before the SPA fallback so unknown API paths never return index.html */
 app.use('/api/*', (req, res) => res.status(404).json({ error: 'Not found' }));

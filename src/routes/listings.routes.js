@@ -8,6 +8,7 @@ import { bidController } from '../controllers/bidController.js';
 import { uploadController } from '../controllers/uploadController.js';
 import { authRequired } from '../middleware/auth.js';
 import { requireStaff } from '../middleware/requireStaff.js';
+import { imageFileFilter, documentFileFilter } from '../utils/uploads.js';
 import { ListingModel } from '../models/Listing.js';
 
 /* Admin boleh mengelola semua listing; agen (terverifikasi, via requireStaff)
@@ -45,8 +46,8 @@ const docStorage = multer.diskStorage({
   },
 });
 
-const uploadPhotos = multer({ storage: photoStorage, limits: { fileSize: 15 * 1024 * 1024 } });
-const uploadDoc    = multer({ storage: docStorage,   limits: { fileSize: 30 * 1024 * 1024 } });
+const uploadPhotos = multer({ storage: photoStorage, fileFilter: imageFileFilter,    limits: { fileSize: 15 * 1024 * 1024 } });
+const uploadDoc    = multer({ storage: docStorage,   fileFilter: documentFileFilter, limits: { fileSize: 30 * 1024 * 1024 } });
 
 /* Listings CRUD — list/get are public; create/update/delete require admin. */
 router.get('/',     wrap(listingController.list));

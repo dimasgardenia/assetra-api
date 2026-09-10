@@ -22,7 +22,9 @@ export const bidController = {
     const amount = Number(req.body?.amount);
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
     if (amount <= listing.currentBid) return res.status(400).json({ error: 'Bid must be higher than current bid' });
+    if (listing.source === 'portal') return res.status(409).json({ error: 'Listing ini bukan lelang — hubungi agen/pemilik lewat tombol kontak' });
     if (listing.status === 'closed') return res.status(409).json({ error: 'Auction closed' });
+    if (listing.status !== 'live') return res.status(409).json({ error: 'Lelang belum aktif' });
 
     const bid = BidModel.create({
       listingId,
