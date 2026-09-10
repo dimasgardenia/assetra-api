@@ -52,10 +52,10 @@ export const listingController = {
 
   async create(req, res) {
     const input = { ...req.body, createdBy: req.user?.id };
-    /* Agen: listing selalu atas nama agen yang login dan langsung tayang. */
+    /* Agen / pemilik: listing selalu atas nama akun yang login dan langsung tayang. */
     if (req.user?.role !== 'admin') {
       input.agentName = req.user.name || input.agentName || 'Agen';
-      input.agency = input.agency || 'Assetra Agent';
+      input.agency = req.user.accountType === 'owner' ? 'Owner Direct' : 'Assetra Agent';
       input.source = 'portal';
       input.status = 'live';
     }
