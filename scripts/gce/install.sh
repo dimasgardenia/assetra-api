@@ -33,6 +33,12 @@ BOOT=0; case "${1:-}" in --boot|boot|*boot) BOOT=1;; esac
 
 [ "$(id -u)" = 0 ] || { echo "Jalankan sebagai root (sudo)."; exit 1; }
 
+# Jalankan dari salinan sementara: git checkout di bawah akan menimpa file ini.
+if [ -f "${BASH_SOURCE[0]:-}" ] && [ "${ASSETRA_RELOCATED:-}" != 1 ]; then
+  _tmp="$(mktemp)"; cp "${BASH_SOURCE[0]}" "$_tmp"
+  ASSETRA_RELOCATED=1 exec bash "$_tmp" "$@"
+fi
+
 # Startup script berjalan tiap boot: bila sudah terpasang, cukup pastikan layanan hidup.
 if [ "$BOOT" = 1 ] && [ -f "$APP_DIR/.installed" ]; then
   systemctl start assetra caddy || true
@@ -107,6 +113,7 @@ id assetra >/dev/null 2>&1 || useradd --system --home "$APP_DIR" --shell /usr/sb
 mkdir -p "$APP_DIR" "$DATA_DIR/uploads"
 
 log "3/7 Kode sumber (cabang: $BRANCH)"
+git config --global --add safe.directory '*' >/dev/null 2>&1 || true   # repo dimiliki user assetra, dijalankan root
 fetch() { # fetch DIR REPO
   if [ -d "$1/.git" ]; then git -C "$1" fetch -q origin "$BRANCH" && git -C "$1" checkout -q -B "$BRANCH" "origin/$BRANCH"
   else git clone -q --branch "$BRANCH" "$2" "$1"; fi
@@ -124,6 +131,7 @@ envset WEB_DIST "$APP_DIR/web-dist"
 envset DB_PATH "$DATA_DIR/assetra.db"
 envset UPLOAD_DIR "$DATA_DIR/uploads"
 [ -n "$(envget JWT_SECRET)" ] || envset JWT_SECRET "$(openssl rand -hex 32)"
+envset BRANCH "$BRANCH"
 envset DOMAIN "$DOMAIN"
 envset APP_URL "$APP_URL"
 envset CORS_ORIGIN "$APP_URL"
@@ -183,6 +191,30 @@ caddy fmt --overwrite /etc/caddy/Caddyfile >/dev/null 2>&1 || true
 systemctl enable -q caddy
 systemctl restart caddy
 
+log "Auto-update (cek GitHub tiap 5 menit)"
+cat > /etc/systemd/system/assetra-autoupdate.service <<UNIT
+[Unit]
+Description=Assetra auto-update from GitHub
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash $APP_DIR/api/scripts/gce/autoupdate.sh
+UNIT
+cat > /etc/systemd/system/assetra-autoupdate.timer <<UNIT
+[Unit]
+Description=Check GitHub for Assetra updates every 5 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target
+UNIT
+systemctl daemon-reload
+systemctl enable -q --now assetra-autoupdate.timer
+
 sleep 3
 if curl -fs -m 5 http://127.0.0.1:3001/api/health >/dev/null; then HEALTH=OK; else HEALTH="GAGAL (lihat: journalctl -u assetra -n 50)"; fi
 touch "$APP_DIR/.installed"
@@ -193,5 +225,5 @@ echo " Buka:      $APP_URL"
 [ -n "$DOMAIN" ] && echo "            (arahkan DNS A record $DOMAIN dan www.$DOMAIN → $EXT_IP; HTTPS aktif otomatis)"
 echo " Admin:     $ADMIN_EMAIL"
 echo " Log:       sudo journalctl -u assetra -f"
-echo " Update:    sudo bash $APP_DIR/api/scripts/gce/install.sh"
+echo " Update:    otomatis tiap 5 menit dari GitHub (manual: sudo bash $APP_DIR/api/scripts/gce/install.sh)"
 echo "════════════════════════════════════════════════════════"

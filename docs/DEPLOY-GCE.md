@@ -50,7 +50,14 @@ sampai muncul baris `Assetra terpasang`.
   tambah `https://assetraland.com` dan `https://www.assetraland.com`.
 - Credentials → kunci Maps → **Website restrictions**: `assetraland.com/*`, `www.assetraland.com/*`.
 
-## 4. Update ke versi terbaru
+## 4. Update otomatis
+
+VM mengecek GitHub setiap 5 menit (`assetra-autoupdate.timer`). Begitu ada commit
+baru di cabang yang dipasang (di repo API maupun web), VM menarik kode, membangun
+ulang, dan me-restart layanan sendiri, biasanya selesai 2–3 menit setelah push.
+Cek riwayatnya: `sudo journalctl -u assetra-autoupdate -n 30 --no-pager`.
+
+## 5. Update manual
 
 SSH ke VM (tombol **SSH** di daftar VM, bisa dari HP), lalu:
 
