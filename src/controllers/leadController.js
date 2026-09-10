@@ -20,15 +20,19 @@ export const leadController = {
     return res.status(201).json({ data: { id: lead.id } });
   },
 
-  /** Admin — daftar semua prospek. */
+  /** Admin: semua prospek. Agen / pemilik: hanya prospek dari listing miliknya. */
   async list(req, res) {
-    res.json({ data: LeadModel.listAll() });
+    const data = req.user.role === 'admin' ? LeadModel.listAll() : LeadModel.listForOwner(req.user.id);
+    res.json({ data });
   },
 
-  /** Admin — ubah status. */
+  /** Ubah status — admin bebas, agen / pemilik hanya prospek listingnya sendiri. */
   async setStatus(req, res) {
     const { status } = req.body || {};
     if (!VALID_STATUS.includes(status)) return res.status(400).json({ error: `status harus: ${VALID_STATUS.join(', ')}` });
+    if (req.user.role !== 'admin' && !LeadModel.belongsTo(Number(req.params.id), req.user.id)) {
+      return res.status(403).json({ error: 'Prospek ini bukan dari listing Anda' });
+    }
     const lead = LeadModel.updateStatus(Number(req.params.id), status);
     if (!lead) return res.status(404).json({ error: 'Prospek tidak ditemukan' });
     res.json({ data: lead });

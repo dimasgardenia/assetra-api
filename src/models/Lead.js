@@ -23,6 +23,33 @@ export const LeadModel = {
     return db.prepare(`SELECT ${COLS} FROM leads ORDER BY created_at DESC`).all();
   },
 
+  /** Prospek untuk listing yang dibuat oleh user tertentu (agen / pemilik).
+      Prospek tanpa listing (mis. dari Konsultan AI) hanya terlihat admin. */
+  listForOwner(userId) {
+    return db.prepare(`
+      SELECT leads.id, leads.name, leads.phone, leads.listing_id AS listingId,
+             leads.listing_title AS listingTitle, leads.type, leads.message,
+             leads.status, leads.created_at AS createdAt
+      FROM leads
+      JOIN listings ON listings.id = leads.listing_id
+      WHERE listings.created_by = ?
+      ORDER BY leads.created_at DESC
+    `).all(userId);
+  },
+
+  findById(id) {
+    return db.prepare(`SELECT ${COLS} FROM leads WHERE id = ?`).get(id);
+  },
+
+  /** true bila prospek terkait listing yang dibuat user tersebut. */
+  belongsTo(leadId, userId) {
+    const row = db.prepare(`
+      SELECT 1 FROM leads JOIN listings ON listings.id = leads.listing_id
+      WHERE leads.id = ? AND listings.created_by = ?
+    `).get(leadId, userId);
+    return !!row;
+  },
+
   updateStatus(id, status) {
     db.prepare('UPDATE leads SET status = ? WHERE id = ?').run(status, id);
     return db.prepare(`SELECT ${COLS} FROM leads WHERE id = ?`).get(id);
