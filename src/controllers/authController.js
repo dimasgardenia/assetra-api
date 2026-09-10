@@ -228,7 +228,7 @@ export const authController = {
     if (phoneOwner) return res.status(409).json({ error: 'Nomor WhatsApp sudah terdaftar di akun lain', code: 'PHONE_TAKEN' });
 
     const hash = await hashPassword(password);
-    const role = /admin/i.test(email) ? 'admin' : 'bidder';
+    const role = 'bidder'; // admin hanya dibuat lewat seed (ADMIN_EMAIL), tidak pernah lewat pendaftaran
     const user = UserModel.create({
       email,
       passwordHash: hash,
@@ -410,7 +410,7 @@ export const authController = {
 
     let user = UserModel.findByEmail(email);
     if (!user) {
-      const role = /admin/i.test(email) ? 'admin' : 'bidder';
+      const role = 'bidder'; // admin hanya dibuat lewat seed (ADMIN_EMAIL), tidak pernah lewat pendaftaran
       user = UserModel.create({
         email,
         passwordHash: null,
