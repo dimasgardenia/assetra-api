@@ -1,16 +1,21 @@
-# Render Blueprint — one free web service that runs the API and serves the
+# Render Blueprint — one web service that runs the API and serves the
 # built frontend from the same origin. Deploy from a phone:
 #   Render dashboard → New → Blueprint → pick dimasgardenia/assetra-api →
 #   pick this branch → Apply. The URL is https://<service-name>.onrender.com
 #
-# Free tier notes: the instance sleeps after ~15 min idle (first request is
-# slow), and the disk is ephemeral, so the SQLite DB and uploads reset on every
-# deploy/restart. The start command re-seeds demo data each boot.
+# Production notes: the "starter" plan + a persistent disk keeps the SQLite DB
+# and uploaded photos across deploys/restarts (the free plan wipes them on every
+# deploy and sleeps after 15 min idle). The start command only creates the admin
+# account (ADMIN_EMAIL / ADMIN_PASSWORD); no demo data is seeded in production.
 services:
   - type: web
     name: assetra
     runtime: node
-    plan: free
+    plan: starter
+    disk:
+      name: assetra-data
+      mountPath: /var/data
+      sizeGB: 1
     buildCommand: npm ci && bash scripts/build-web.sh
     startCommand: node src/db/seed.js && node src/server.js
     healthCheckPath: /api/health
@@ -39,9 +44,14 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: DB_PATH
-        value: ./data/assetra.db
+        value: /var/data/assetra.db
       - key: UPLOAD_DIR
-        value: ./uploads
+        value: /var/data/uploads
+      # Akun admin pertama (dibuat sekali saat boot pertama). Isi lewat dashboard hosting.
+      - key: ADMIN_EMAIL
+        value: landassetra@gmail.com
+      - key: ADMIN_PASSWORD
+        sync: false
       # Same origin — CORS only matters when the frontend is hosted elsewhere.
       - key: CORS_ORIGIN
         value: http://localhost:5173

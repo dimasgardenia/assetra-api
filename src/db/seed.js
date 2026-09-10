@@ -1,4 +1,7 @@
-/* Seed DB with demo listings + demo admin user. Idempotent — skip if data already exists. */
+/* Seed DB. Idempotent — skip if data already exists.
+   - development/test : demo admin (admin123), demo bidder, demo listings, demo KYC
+   - production       : ONLY the admin account, from ADMIN_EMAIL + ADMIN_PASSWORD env.
+                        No demo data ever reaches production. */
 import bcrypt from 'bcryptjs';
 import { db } from '../config/db.js';
 import { initSchema } from './init.js';
@@ -15,19 +18,30 @@ const LISTINGS_SEED = [
 ];
 
 const now = Date.now();
+const PROD = process.env.NODE_ENV === 'production';
 
-// 1. Demo admin user
-const adminEmail = 'admin@assetra.co.id';
-const existingAdmin = db.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail);
+// 1. Admin user
+const adminEmail = (PROD ? process.env.ADMIN_EMAIL : 'admin@assetra.co.id')?.trim().toLowerCase();
+const adminPassword = PROD ? process.env.ADMIN_PASSWORD : 'admin123';
+if (PROD && (!adminEmail || !adminPassword || adminPassword.length < 8)) {
+  console.error('[seed] FATAL: production needs ADMIN_EMAIL and ADMIN_PASSWORD (min 8 chars) env vars');
+  process.exit(1);
+}
+const existingAdmin = db.prepare('SELECT id FROM users WHERE email = ? COLLATE NOCASE').get(adminEmail);
 if (!existingAdmin) {
-  const hash = bcrypt.hashSync('admin123', 10);
+  const hash = bcrypt.hashSync(adminPassword, 10);
   db.prepare(`
     INSERT INTO users (email, password_hash, name, role, kyc_verified, email_verified, provider)
     VALUES (?, ?, ?, 'admin', 1, 1, 'admin')
-  `).run(adminEmail, hash, 'Admin Console');
-  console.log(`[seed] created admin user → ${adminEmail} / admin123`);
+  `).run(adminEmail, hash, 'Admin Assetra');
+  console.log(`[seed] created admin user → ${adminEmail}${PROD ? '' : ' / admin123'}`);
 } else {
   console.log(`[seed] admin user already exists`);
+}
+
+if (PROD) {
+  console.log('[seed] production: demo data skipped');
+  process.exit(0);
 }
 
 // 2. Demo bidder user
