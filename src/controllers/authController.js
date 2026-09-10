@@ -178,28 +178,6 @@ function sendVerifyEmail(email, token) {
   });
 }
 
-const PHONE_OTP_TTL_MS = 5 * 60 * 1000; // OTP WhatsApp berlaku 5 menit
-
-/* ╔══════════════════════════════════════════════════════════════════╗
-   ║ TITIK INTEGRASI PENYEDIA WHATSAPP                                 ║
-   ║ Saat penyedia (SendTalk/Verihubs/Twilio/Meta Cloud API) siap,     ║
-   ║ implementasikan pengiriman di fungsi ini lalu return true.        ║
-   ║ Selama return false → endpoint send-otp menjawab 503 dan          ║
-   ║ verifikasi WhatsApp belum bisa diselesaikan (OTP tidak dibocorkan).║
-   ╚══════════════════════════════════════════════════════════════════╝ */
-async function sendWhatsAppOtp(phone, otp) {
-  // TODO(provider): contoh Meta Cloud API —
-  //   await fetch(`https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`, {
-  //     method: 'POST',
-  //     headers: { Authorization: `Bearer ${WA_TOKEN}`, 'Content-Type': 'application/json' },
-  //     body: JSON.stringify({ messaging_product: 'whatsapp', to: phone.replace('+', ''),
-  //       type: 'template', template: { name: 'otp_assetra', language: { code: 'id' },
-  //       components: [{ type: 'body', parameters: [{ type: 'text', text: otp }] }] } }),
-  //   });
-  console.error(`[auth] WhatsApp OTP NOT sent to ${phone}: no WhatsApp provider configured`);
-  return false; // false = belum ada penyedia
-}
-
 function makeAuthResponse(user) {
   const publicUser = UserModel.toPublic(user);
   const token = signToken({ sub: user.id, role: user.role });
@@ -452,49 +430,6 @@ export const authController = {
       user = UserModel.updateProfile(user.id, { picture });
     }
     return res.json(makeAuthResponse(user));
-  },
-
-  /** Kirim OTP 6 digit ke nomor WhatsApp user yang sedang login.
-   *  body.phone opsional — untuk mengisi/mengganti nomor (mis. akun SSO). */
-  async sendPhoneOtp(req, res) {
-    let user = req.user;
-    const { phone } = req.body || {};
-
-    if (phone) {
-      const norm = normalizeIndoPhone(phone);
-      if (!norm) return res.status(400).json({ error: 'Nomor WhatsApp tidak valid — gunakan format 08xx / +62xx' });
-      const owner = UserModel.findByPhone(norm);
-      if (owner && owner.id !== user.id) return res.status(409).json({ error: 'Nomor WhatsApp sudah terdaftar di akun lain' });
-      user = UserModel.setPhone(user.id, norm);
-    }
-    if (!user.phone) return res.status(400).json({ error: 'Akun belum memiliki nomor WhatsApp' });
-    if (user.phoneVerified) return res.json({ ok: true, alreadyVerified: true });
-
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
-    UserModel.setPhoneOtp(user.id, otp, Date.now() + PHONE_OTP_TTL_MS);
-    const delivered = await sendWhatsAppOtp(user.phone, otp);
-    if (!delivered) {
-      UserModel.setPhoneOtp(user.id, null, null);
-      return res.status(503).json({ error: 'Layanan verifikasi WhatsApp belum aktif — coba lagi nanti' });
-    }
-    return res.json({ ok: true, phone: user.phone, expiresInMinutes: 5 });
-  },
-
-  /** Cocokkan OTP → tandai nomor terverifikasi. */
-  async verifyPhone(req, res) {
-    const { code } = req.body || {};
-    if (!code) return res.status(400).json({ error: 'code required' });
-
-    const saved = UserModel.getPhoneOtp(req.user.id);
-    if (!saved?.otp || !saved.expires || saved.expires < Date.now()) {
-      return res.status(400).json({ error: 'Kode OTP kedaluwarsa — kirim ulang kode baru' });
-    }
-    if (String(code).trim() !== saved.otp) {
-      return res.status(400).json({ error: 'Kode OTP salah' });
-    }
-    const updated = UserModel.markPhoneVerified(req.user.id);
-    console.log(`[auth] phone verified: ${updated.email} (${updated.phone})`);
-    return res.json({ user: UserModel.toPublic(updated) });
   },
 
   async me(req, res) {

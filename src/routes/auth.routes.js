@@ -18,8 +18,6 @@ router.post('/forgot', emailLimiter, wrap(authController.forgotPassword));
 router.post('/reset', loginLimiter, wrap(authController.resetPassword));
 router.post('/verify-email', loginLimiter, wrap(authController.verifyEmail));
 router.post('/send-verification', emailLimiter, wrap(authController.sendVerification));
-router.post('/phone/send-otp', authRequired, emailLimiter, wrap(authController.sendPhoneOtp));
-router.post('/phone/verify', authRequired, loginLimiter, wrap(authController.verifyPhone));
 router.get('/me', authRequired, wrap(authController.me));
 
 export default router;
