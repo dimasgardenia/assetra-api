@@ -20,6 +20,12 @@ function decorate(listing) {
 export const listingController = {
   async list(req, res) {
     const { page, perPage, offset } = parsePage(req.query, { page: 1, perPage: 9 });
+    /* ?mine=1 → hanya listing yang dibuat oleh user yang login (dasbor agen). */
+    let createdBy;
+    if (req.query.mine) {
+      if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+      createdBy = req.user.id;
+    }
     const { total, rows } = ListingModel.search({
       type: req.query.type,
       region: req.query.region,
@@ -27,6 +33,7 @@ export const listingController = {
       q: req.query.q,
       status: req.query.status,
       source: req.query.source,
+      createdBy,
       limit: perPage,
       offset,
     });
@@ -45,6 +52,13 @@ export const listingController = {
 
   async create(req, res) {
     const input = { ...req.body, createdBy: req.user?.id };
+    /* Agen: listing selalu atas nama agen yang login dan langsung tayang. */
+    if (req.user?.role !== 'admin') {
+      input.agentName = req.user.name || input.agentName || 'Agen';
+      input.agency = input.agency || 'Assetra Agent';
+      input.source = 'portal';
+      input.status = 'live';
+    }
     const listing = ListingModel.create(input);
     res.status(201).json({ data: decorate(listing) });
   },

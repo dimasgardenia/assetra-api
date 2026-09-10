@@ -56,8 +56,8 @@ npm run reset       # rm data/assetra.db && re-seed
 ### Listings (`/api/listings`)
 - `GET /` — paginated. Query: `page`, `per_page`, `type`, `region`, `verif_level`, `q`, `status`
 - `GET /:id` — get one
-- `POST /` — **admin only** — create listing
-- `PUT /:id` — admin only — update
+- `POST /` — admin atau agen terverifikasi — create listing (agen: langsung tayang, atas nama agen)
+- `PUT /:id` — admin, atau agen untuk listing miliknya — update
 - `DELETE /:id` — admin only
 
 ### Bids

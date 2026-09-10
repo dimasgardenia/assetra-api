@@ -7,7 +7,20 @@ import { listingController } from '../controllers/listingController.js';
 import { bidController } from '../controllers/bidController.js';
 import { uploadController } from '../controllers/uploadController.js';
 import { authRequired } from '../middleware/auth.js';
-import { requireRole } from '../middleware/requireRole.js';
+import { requireStaff } from '../middleware/requireStaff.js';
+import { ListingModel } from '../models/Listing.js';
+
+/* Admin boleh mengelola semua listing; agen (terverifikasi, via requireStaff)
+   hanya listing yang ia buat sendiri. Dipakai setelah authRequired + requireStaff. */
+function requireListingOwner(req, res, next) {
+  if (req.user.role === 'admin') return next();
+  const listing = ListingModel.findById(decodeURIComponent(req.params.id));
+  if (!listing) return res.status(404).json({ error: 'Listing not found' });
+  if (listing.createdBy !== req.user.id) {
+    return res.status(403).json({ error: 'Anda hanya bisa mengelola listing yang Anda buat sendiri' });
+  }
+  next();
+}
 import { wrap } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -38,36 +51,36 @@ const uploadDoc    = multer({ storage: docStorage,   limits: { fileSize: 30 * 10
 /* Listings CRUD — list/get are public; create/update/delete require admin. */
 router.get('/',     wrap(listingController.list));
 router.get('/:id',  wrap(listingController.get));
-router.post('/',    authRequired, requireRole('admin'), wrap(listingController.create));
-router.put('/:id',  authRequired, requireRole('admin'), wrap(listingController.update));
-router.delete('/:id', authRequired, requireRole('admin'), wrap(listingController.remove));
+router.post('/',    authRequired, requireStaff, wrap(listingController.create));
+router.put('/:id',  authRequired, requireStaff, requireListingOwner, wrap(listingController.update));
+router.delete('/:id', authRequired, requireStaff, requireListingOwner, wrap(listingController.remove));
 
 /* Bids — list public, place requires auth */
 router.get('/:id/bids',  wrap(bidController.listForListing));
 router.post('/:id/bids', authRequired, wrap(bidController.place));
 
-/* Photos — admin only */
+/* Photos — admin, atau agen untuk listing miliknya */
 router.post('/:id/photos',
-  authRequired, requireRole('admin'),
+  authRequired, requireStaff, requireListingOwner,
   uploadPhotos.array('photos', 24),
   wrap(uploadController.addPhotos));
 
 router.delete('/:id/photos/:photoId',
-  authRequired, requireRole('admin'),
+  authRequired, requireStaff, requireListingOwner,
   wrap(uploadController.removePhoto));
 
 router.post('/:id/photos/reorder',
-  authRequired, requireRole('admin'),
+  authRequired, requireStaff, requireListingOwner,
   wrap(uploadController.reorderPhotos));
 
-/* Documents — admin only */
+/* Documents — admin, atau agen untuk listing miliknya */
 router.post('/:id/documents/:slot',
-  authRequired, requireRole('admin'),
+  authRequired, requireStaff, requireListingOwner,
   uploadDoc.single('file'),
   wrap(uploadController.uploadDocument));
 
 router.delete('/:id/documents/:slot',
-  authRequired, requireRole('admin'),
+  authRequired, requireStaff, requireListingOwner,
   wrap(uploadController.removeDocument));
 
 export default router;

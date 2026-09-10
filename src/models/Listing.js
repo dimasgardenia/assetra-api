@@ -22,13 +22,14 @@ export const ListingModel = {
   },
 
   /** Paginated search. Filters: type, region, verifLevel ('kemenkeu'|'bpn'), q (text), source ('portal'). */
-  search({ type, region, verifLevel, q, limit, offset, status, source }) {
+  search({ type, region, verifLevel, q, limit, offset, status, source, createdBy }) {
     const where = [];
     const params = {};
     if (type && type !== 'all')      { where.push('type = @type'); params.type = type; }
     if (region && region !== 'any')  { where.push('region = @region'); params.region = region; }
     if (status)                      { where.push('status = @status'); params.status = status; }
     if (source)                      { where.push('source = @source'); params.source = source; }
+    if (createdBy)                   { where.push('created_by = @createdBy'); params.createdBy = createdBy; }
     if (verifLevel === 'kemenkeu')   { where.push(`verifications LIKE '%KEMENKEU%'`); }
     if (verifLevel === 'bpn')        { where.push(`verifications LIKE '%BPN%'`); }
     if (q) {
