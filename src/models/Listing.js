@@ -6,7 +6,8 @@ const COLS = `
   bidders, bids, end_date AS endDate, status, trust_score AS trustScore,
   verifications, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt,
   price, mode, beds, baths, area, agent_name AS agentName, agency, promo, source,
-  description, certificate, year_built AS yearBuilt, building_area AS buildingArea, floors, facilities
+  description, certificate, year_built AS yearBuilt, building_area AS buildingArea, floors, facilities,
+  lat, lng
 `;
 
 const parseRow = (row) => {
@@ -59,8 +60,8 @@ export const ListingModel = {
         (id, title, type, type_label, address, region, current_bid, starting_bid, buy_now, deposit,
          bidders, bids, end_date, status, trust_score, verifications, created_by, created_at, updated_at,
          price, mode, beds, baths, area, agent_name, agency, promo, source,
-         description, certificate, year_built, building_area, floors, facilities)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         description, certificate, year_built, building_area, floors, facilities, lat, lng)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, input.title || 'Untitled', input.type || 'property', input.typeLabel || null,
       input.address || null, input.region || null,
@@ -78,6 +79,7 @@ export const ListingModel = {
       input.description || null, input.certificate || null,
       input.yearBuilt ?? null, input.buildingArea ?? null, input.floors ?? null,
       JSON.stringify(input.facilities || []),
+      input.lat ?? null, input.lng ?? null,
     );
     return ListingModel.findById(id);
   },
@@ -105,7 +107,7 @@ export const ListingModel = {
       price: 'price', mode: 'mode', beds: 'beds', baths: 'baths', area: 'area',
       agentName: 'agent_name', agency: 'agency', promo: 'promo',
       description: 'description', certificate: 'certificate', yearBuilt: 'year_built',
-      buildingArea: 'building_area', floors: 'floors',
+      buildingArea: 'building_area', floors: 'floors', lat: 'lat', lng: 'lng',
     };
     if (Array.isArray(patch.facilities)) {
       fields.push('facilities = ?');

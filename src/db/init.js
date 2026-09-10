@@ -24,6 +24,8 @@ const LISTING_MIGRATIONS = [
   ['building_area', 'INTEGER'],// m² (area = land)
   ['floors', 'INTEGER'],
   ['facilities', 'TEXT'],      // JSON array of strings
+  ['lat', 'REAL'],             // koordinat Google Maps (WGS84)
+  ['lng', 'REAL'],
 ];
 
 export function initSchema() {

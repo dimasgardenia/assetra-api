@@ -19,6 +19,9 @@ function validateListing(body, { partial = false } = {}) {
   if (body.type !== undefined && !VALID_TYPES.includes(body.type)) return `Tipe harus salah satu: ${VALID_TYPES.join(', ')}`;
   if (body.status !== undefined && !VALID_STATUS.includes(body.status)) return `Status harus salah satu: ${VALID_STATUS.join(', ')}`;
   if (body.price !== undefined && body.price !== null && !(Number.isFinite(Number(body.price)) && Number(body.price) >= 0)) return 'Harga harus angka ≥ 0';
+  for (const [k, max] of [['lat', 90], ['lng', 180]]) {
+    if (body[k] !== undefined && body[k] !== null && !(Number.isFinite(Number(body[k])) && Math.abs(Number(body[k])) <= max)) return `Koordinat ${k} tidak valid`;
+  }
   return null;
 }
 
