@@ -47,8 +47,12 @@ cfg() { # cfg VAR metadata-key default → pakai env VAR, lalu metadata, lalu de
 envget() { [ -f "$ENV_FILE" ] && sed -n "s/^$1=//p" "$ENV_FILE" | head -1 | sed 's/^"\(.*\)"$/\1/' || true; }
 envset() { # envset KEY VALUE → tulis/ganti di ENV_FILE (dikutip agar aman untuk systemd)
   mkdir -p "$(dirname "$ENV_FILE")"; touch "$ENV_FILE"; chmod 600 "$ENV_FILE"
-  local esc; esc=$(printf '%s' "$2" | sed 's/[\/&]/\\&/g; s/"/\\"/g')
-  if grep -q "^$1=" "$ENV_FILE"; then sed -i "s/^$1=.*/$1=\"$esc\"/" "$ENV_FILE"; else echo "$1=\"$esc\"" >> "$ENV_FILE"; fi
+  if grep -q "^$1=" "$ENV_FILE"; then
+    local esc; esc=$(printf '%s' "$2" | sed 's/[\/&\\]/\\&/g')   # escape hanya untuk pola pengganti sed
+    sed -i "s/^$1=.*/$1=\"$esc\"/" "$ENV_FILE"
+  else
+    printf '%s="%s"\n' "$1" "$2" >> "$ENV_FILE"
+  fi
 }
 
 BRANCH="$(cfg ASSETRA_BRANCH assetra-branch main)"
