@@ -71,7 +71,7 @@ export DEBIAN_FRONTEND=noninteractive
 # Saat boot pertama Debian menjalankan apt (unattended-upgrades / agen Google) — tunggu sampai selesai.
 wait_apt() {
   local n=0
-  while pgrep -x 'apt|apt-get|dpkg|unattended-upgr' >/dev/null 2>&1; do
+  while pgrep -x 'apt|apt-get|dpkg' >/dev/null 2>&1 || pgrep -f 'unattended-upgrade$' >/dev/null 2>&1; do
     [ $((n % 6)) = 0 ] && echo "menunggu proses apt lain selesai…"; n=$((n + 1)); sleep 5
     [ $n -gt 180 ] && { echo "apt lain tidak selesai setelah 15 menit"; break; }
   done
