@@ -21,7 +21,7 @@ fi
 cd .web-src
 npm ci --no-audit --no-fund
 # Empty VITE_API_BASE = same origin: the API serves both the SPA and /api.
-VITE_API_BASE="" VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-}" npm run build
+VITE_API_BASE="" VITE_GOOGLE_CLIENT_ID="${VITE_GOOGLE_CLIENT_ID:-}" VITE_GOOGLE_MAPS_API_KEY="${VITE_GOOGLE_MAPS_API_KEY:-}" npm run build
 cd ..
 mv .web-src/dist web-dist
 rm -rf .web-src

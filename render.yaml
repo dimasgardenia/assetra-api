@@ -23,6 +23,19 @@ services:
         value: "true"
       - key: WEB_DIST
         value: ./web-dist
+      # Google Sign-In (OAuth client ID bukan rahasia; dipakai backend & disematkan ke bundel frontend saat build)
+      - key: GOOGLE_CLIENT_ID
+        value: 913829727818-1kcfri271ngm2hmrko9qucsnbi0jnkhg.apps.googleusercontent.com
+      - key: VITE_GOOGLE_CLIENT_ID
+        value: 913829727818-1kcfri271ngm2hmrko9qucsnbi0jnkhg.apps.googleusercontent.com
+      # Google Maps: isi lewat dashboard hosting (sync: false = tidak disimpan di repo)
+      - key: VITE_GOOGLE_MAPS_API_KEY
+        sync: false
+      # Email transaksional: isi lewat dashboard hosting
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: Assetra <no-reply@assetraland.com>
       - key: JWT_SECRET
         generateValue: true
       - key: DB_PATH
