@@ -5,7 +5,7 @@
 # frontend hasil build dari origin yang sama, di belakang Caddy (HTTPS otomatis).
 #
 # Pemakaian sebagai "startup script" VM (dijalankan otomatis tiap boot):
-#   curl -fsSL https://raw.githubusercontent.com/dimasgardenia/assetra-api/main/scripts/gce/install.sh | bash -s -- --boot
+#   curl -fsSL https://raw.githubusercontent.com/dimasgardenia/assetra-api/claude/mobile-chrome-repo-testing-hotwug/scripts/gce/install.sh | bash -s -- --boot
 # Pemakaian manual / update ke versi terbaru (lewat SSH, sebagai root):
 #   sudo bash /opt/assetra/api/scripts/gce/install.sh
 #

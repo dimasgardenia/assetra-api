@@ -19,7 +19,7 @@ Compute Engine → VM instances → **Create instance**
 Buka bagian **Advanced options → Management → Automation (Startup script)** dan tempel:
 
 ```
-curl -fsSL https://raw.githubusercontent.com/dimasgardenia/assetra-api/main/scripts/gce/install.sh | bash -s -- --boot
+curl -fsSL https://raw.githubusercontent.com/dimasgardenia/assetra-api/claude/mobile-chrome-repo-testing-hotwug/scripts/gce/install.sh | bash -s -- --boot
 ```
 
 Lalu di **Advanced options → Management → Metadata** tambahkan pasangan key/value:
@@ -29,7 +29,7 @@ Lalu di **Advanced options → Management → Metadata** tambahkan pasangan key/
 | `assetra-admin-password` | sandi admin pilihan Anda (min 8 karakter) |
 | `assetra-maps-key` | kunci Google Maps |
 | `assetra-domain` | `assetraland.com` |
-| `assetra-branch` | cabang git yang mau dipasang (kosongkan = `main`) |
+| `assetra-branch` | `claude/mobile-chrome-repo-testing-hotwug` (cabang yang berisi versi terbaru; setelah digabung ke main, kosongkan) |
 | `assetra-resend-key` | kunci Resend (opsional, untuk email verifikasi) |
 
 Tekan **Create**. Instalasi memakan ±5 menit. Pantau di VM → **Logs → Serial port 1**
