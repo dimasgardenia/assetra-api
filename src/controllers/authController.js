@@ -427,8 +427,11 @@ export const authController = {
           .then(() => console.log(`[auth] welcome email sent to ${user.email}`))
           .catch(e => console.error(`[auth] welcome email FAILED for ${user.email}:`, e.message));
       }
-    } else if (picture && picture !== user.picture) {
-      user = UserModel.updateProfile(user.id, { picture });
+    } else {
+      /* Akun email yang belum sempat diverifikasi: Google sudah membuktikan
+         kepemilikan email ini, jadi tandai terverifikasi. */
+      if (!user.emailVerified) user = UserModel.markEmailVerified(user.id);
+      if (picture && picture !== user.picture) user = UserModel.updateProfile(user.id, { picture });
     }
     return res.json(makeAuthResponse(user));
   },
