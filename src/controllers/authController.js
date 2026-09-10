@@ -93,7 +93,7 @@ async function sendBrandedEmail(email, { subject, title, introHtml, buttonLabel,
         <tr>
           <td style="padding:20px 36px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#9AA3B8;line-height:1.7;" align="center">
             Email otomatis dari Assetra — mohon tidak membalas email ini.<br>
-            PT Assetra Properti Nusantara &middot; Jakarta, Indonesia
+            PT. Assetra Prosper Capital &middot; Jakarta, Indonesia
           </td>
         </tr>
 
