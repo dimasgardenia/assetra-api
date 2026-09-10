@@ -77,6 +77,7 @@ wait_apt() {
   done
 }
 APT="apt-get -o DPkg::Lock::Timeout=600"
+wait_apt; dpkg --configure -a >/dev/null 2>&1 || true   # bereskan instalasi yang terputus
 wait_apt; $APT update -qq
 wait_apt; $APT install -y -qq curl git ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https build-essential python3 >/dev/null
 if ! command -v node >/dev/null || [ "$(node -v | cut -c2-3)" -lt 22 ]; then
