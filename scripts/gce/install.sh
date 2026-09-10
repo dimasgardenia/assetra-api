@@ -68,16 +68,25 @@ fi
 
 log "1/7 Paket sistem (Node 22, git, Caddy)"
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y -qq curl git ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https build-essential python3 >/dev/null
+# Saat boot pertama Debian menjalankan apt (unattended-upgrades / agen Google) — tunggu sampai selesai.
+wait_apt() {
+  local n=0
+  while pgrep -x 'apt|apt-get|dpkg|unattended-upgr' >/dev/null 2>&1; do
+    [ $((n % 6)) = 0 ] && echo "menunggu proses apt lain selesai…"; n=$((n + 1)); sleep 5
+    [ $n -gt 180 ] && { echo "apt lain tidak selesai setelah 15 menit"; break; }
+  done
+}
+APT="apt-get -o DPkg::Lock::Timeout=600"
+wait_apt; $APT update -qq
+wait_apt; $APT install -y -qq curl git ca-certificates gnupg debian-keyring debian-archive-keyring apt-transport-https build-essential python3 >/dev/null
 if ! command -v node >/dev/null || [ "$(node -v | cut -c2-3)" -lt 22 ]; then
   curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null
-  apt-get install -y -qq nodejs >/dev/null
+  wait_apt; $APT install -y -qq nodejs >/dev/null
 fi
 if ! command -v caddy >/dev/null; then
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' > /etc/apt/sources.list.d/caddy-stable.list
-  apt-get update -qq && apt-get install -y -qq caddy >/dev/null
+  wait_apt; $APT update -qq && $APT install -y -qq caddy >/dev/null
 fi
 echo "node $(node -v), caddy $(caddy version | cut -d' ' -f1)"
 
