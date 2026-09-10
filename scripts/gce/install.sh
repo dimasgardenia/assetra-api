@@ -29,7 +29,7 @@ DATA_DIR=/var/lib/assetra
 API_REPO=https://github.com/dimasgardenia/assetra-api.git
 WEB_REPO=https://github.com/dimasgardenia/assetra-web.git
 DEFAULT_GOOGLE_CLIENT_ID=913829727818-1kcfri271ngm2hmrko9qucsnbi0jnkhg.apps.googleusercontent.com
-BOOT=0; [ "${1:-}" = "--boot" ] && BOOT=1
+BOOT=0; case "${1:-}" in --boot|boot|*boot) BOOT=1;; esac
 
 [ "$(id -u)" = 0 ] || { echo "Jalankan sebagai root (sudo)."; exit 1; }
 
